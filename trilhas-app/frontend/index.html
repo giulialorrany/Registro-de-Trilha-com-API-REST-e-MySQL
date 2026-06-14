@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark">
+<!--
+  ╔══════════════════════════════════════════════════════╗
+  ║         REGISTRO DE TRILHAS — Frontend               ║
+  ║  HTML + CSS + JS puro | Conectado ao backend Node    ║
+  ║  Funcionalidades: CRUD completo + Toggle Dark/Light  ║
+  ╚══════════════════════════════════════════════════════╝
+
+  O atributo data-tema="dark" no <html> controla qual tema
+  está ativo. O CSS usa [data-tema="dark"] e [data-tema="light"]
+  como seletores para alternar todas as cores automaticamente.
+-->
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🌿 Registro de Trilhas</title>
+
+  <!-- Importação das fontes do Google Fonts:
+       - Playfair Display: usada nos títulos (elegante, serifada)
+       - Inter: usada no corpo do texto (moderna, legível) -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ===========================
+       TOKENS — DARK (padrão)
+       Variáveis CSS globais que definem toda a paleta do tema escuro.
+       Todas as cores do site vêm daqui — mudar uma variável
+       reflete automaticamente em todos os elementos que a usam.
+    =========================== */
+    :root {
+      /* Paleta roxa */
+      --roxo-escuro:   #2D1B5E;
+      --roxo-medio:    #5A3E8E;
+      --roxo-claro:    #9B7EC8;
+      /* Paleta rosa */
+      --rosa-vibrante: #E8609A;
+      --rosa-claro:    #F5B8D4;
+      /* Paleta verde (tema natureza) */
+      --verde-floresta:#2E7D52;
+      --verde-medio:   #4CAF7D;
+      --verde-claro:   #A8E6C3;
+
+      /* Cores de superfície (fundos) */
+      --bg-pagina:  #0F0A1E;           /* fundo geral da página */
+      --bg-card:    #1A1035;           /* fundo dos cards de trilha */
+      --bg-input:   #231545;           /* fundo dos campos de formulário */
+      --bg-statsbar:rgba(255,255,255,0.04); /* barra de estatísticas semitransparente */
+
+      /* Cores de texto */
+      --texto-principal: #F0EBF8;      /* texto primário (títulos, conteúdo) */
+      --texto-suave:     #BEB0D8;      /* texto secundário (legendas, placeholders) */
+
+      /* Bordas com opacidade */
+      --borda: rgba(155, 126, 200, 0.25);
+
+      /* Título do header no tema dark: usa gradiente rosa→verde via clip de texto */
+      --header-titulo-cor: transparent;
+      --header-titulo-bg:  linear-gradient(90deg, #F5B8D4, #A8E6C3);
+
+      /* Estrela de nota ainda não selecionada */
+      --estrela-off: #3a2e5a;
+
+      /* Overlay escuro do modal */
+      --overlay-bg: rgba(0,0,0,.70);
+
+      /* Tags de km e data */
+      --tag-km-bg:   rgba(155,126,200,.15);
+      --tag-km-cor:  #9B7EC8;
+      --tag-data-bg: rgba(155,126,200,.10);
+      --tag-data-cor:#BEB0D8;
+
+      /* Sombra ao passar o mouse nos cards */
+      --card-shadow: 0 8px 30px rgba(90,62,142,.30);
+
+      /* Fundo do toast de erro */
+      --toast-erro-bg: #7B1A1A;
+
+      /* Transição suave ao trocar de tema (aplicada na raiz) */
+      transition: background-color .35s, color .35s;
+    }
+
+    /* ===========================
+       TOKENS — LIGHT
+       Sobrescreve apenas as variáveis que mudam no tema claro.
+       Tudo que não for redefinido aqui herda do :root (dark).
+       A troca acontece quando o JS adiciona data-tema="light" no <html>.
+    =========================== */
+    [data-tema="light"] {
+      --roxo-claro:    #7B5FBF;        /* roxo mais saturado para contraste no claro */
+      --rosa-vibrante: #D44F8A;
+      --verde-floresta:#1E6B3E;
+      --verde-medio:   #2E9E60;
+
+      --bg-pagina:  #F5F0FB;           /* fundo lilás bem claro */
+      --bg-card:    #FFFFFF;
+      --bg-input:   #F0EBF8;
+      --bg-statsbar:#FFFFFF;
+
+      --texto-principal: #1A0F3E;      /* texto escuro sobre fundo claro */
+      --texto-suave:     #5A4880;
+
+      --borda: rgba(90, 62, 142, 0.18);
+
+      /* No light o título é branco sólido (sem gradiente clip) */
+      --header-titulo-cor: #fff;
+      --header-titulo-bg:  none;
+
+      --estrela-off: #D8CCE8;          /* estrela inativa mais clara */
+
+      --overlay-bg: rgba(45,27,94,.45); /* overlay roxo translúcido */
+
+      --tag-km-bg:   #EDE8F8;
+      --tag-km-cor:  #7B5FBF;
+      --tag-data-bg: #F0EBF8;
+      --tag-data-cor:#5A4880;
+
+      --card-shadow: 0 10px 32px rgba(90,62,142,.15);
+
+      --toast-erro-bg: #C0392B;
+    }
+
+    /* ===========================
+       RESET & BASE
+       Zera margens/paddings nativos do navegador e define
+       box-sizing: border-box para que padding não estoure o layout.
+    =========================== */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-pagina);
+      color: var(--texto-principal);
+      min-height: 100vh;
+      /* Animação suave ao trocar tema */
+      transition: background-color .35s, color .35s;
+    }
+
+    /* ===========================
+       BOTÃO TOGGLE TEMA
+       Fica posicionado no canto superior direito do header (absolute).
+       Mostra ☀️ "Modo Claro" quando está no dark,
+       e 🌙 "Modo Escuro" quando está no light.
+    =========================== */
+    .btn-tema {
+      position: absolute;
+      top: 1.2rem;
+      right: 1.4rem;
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 50px;
+      color: #fff;
+      font-size: .8rem;
+      font-weight: 600;
+      padding: .4rem .9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+      backdrop-filter: blur(6px);       /* efeito vidro fosco */
+      transition: background .2s, transform .15s;
+      z-index: 10;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-tema:hover { background: rgba(255,255,255,.25); transform: scale(1.04); }
+    /* O ícone gira ao clicar (animação de feedback) */
+    .btn-tema .icone { font-size: 1rem; transition: transform .4s; }
+    .btn-tema:active .icone { transform: rotate(180deg); }
+
+    /* ===========================
+       HEADER
+       Gradiente diagonal roxo → roxo médio → verde floresta,
+       simulando um pôr do sol em trilha.
+       O ::before adiciona um padrão de pontos decorativos.
+    =========================== */
+    header {
+      background: linear-gradient(135deg, var(--roxo-escuro) 0%, #4a2880 55%, var(--verde-floresta) 100%);
+      padding: 2.2rem 2rem 3rem;
+      text-align: center;
+      position: relative;  /* necessário para o botão de tema (position: absolute) */
+      overflow: hidden;
+      transition: background .35s;
+    }
+    /* Padrão de bolinhas semitransparentes decorativas no header */
+    header::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='1.5' fill='rgba(255,255,255,0.07)'/%3E%3C/svg%3E") repeat;
+      pointer-events: none; /* não interfere com cliques */
+    }
+    .header-emoji { font-size: 3rem; display: block; margin-bottom: .5rem; }
+
+    /* Título com texto recortado no gradiente (efeito no dark).
+       -webkit-background-clip: text + color: transparent fazem o truque. */
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 4vw, 2.8rem); /* tamanho responsivo */
+      color: var(--header-titulo-cor);
+      background: var(--header-titulo-bg);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: var(--header-titulo-cor);
+      background-clip: text;
+      margin-bottom: .4rem;
+      transition: color .35s;
+    }
+    /* No light, desfaz o gradiente e coloca branco sólido */
+    [data-tema="light"] header h1 {
+      -webkit-text-fill-color: #fff;
+      background: none;
+    }
+    header p {
+      color: rgba(255,255,255,.75);
+      font-size: .95rem;
+      font-weight: 300;
+    }
+
+    /* ===========================
+       STATS BAR
+       Faixa abaixo do header com os números gerais (total e média).
+       Os dados são buscados do endpoint GET /api/estatisticas.
+    =========================== */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+      background: var(--bg-statsbar);
+      border-bottom: 1px solid var(--borda);
+      padding: 1rem 2rem;
+      transition: background .35s;
+    }
+    [data-tema="light"] .stats-bar { box-shadow: 0 2px 8px rgba(90,62,142,.08); }
+    .stat-item { text-align: center; }
+    .stat-valor {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--verde-medio);
+      transition: color .35s;
+    }
+    .stat-label {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--texto-suave);
+    }
+
+    /* ===========================
+       LAYOUT PRINCIPAL
+    =========================== */
+    main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    /* ===========================
+       BOTÃO "NOVA TRILHA"
+       Centralizado, com gradiente rosa→roxo e sombra colorida.
+       Abre o modal de cadastro ao ser clicado.
+    =========================== */
+    .btn-nova-trilha {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin: 0 auto 2rem;
+      background: linear-gradient(135deg, var(--rosa-vibrante), var(--roxo-medio));
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: .85rem 2rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(232,96,154,.35);
+      transition: transform .2s, box-shadow .2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-nova-trilha:hover {
+      transform: translateY(-2px);     /* leve flutuação no hover */
+      box-shadow: 0 8px 28px rgba(232,96,154,.5);
+    }
+
+    /* ===========================
+       MODAL DE CADASTRO/EDIÇÃO
+       .overlay cobre a tela inteira com blur.
+       Só fica visível quando a classe .ativo é adicionada via JS.
+    =========================== */
+    .overlay {
+      display: none;                   /* escondido por padrão */
+      position: fixed; inset: 0;
+      background: var(--overlay-bg);
+      backdrop-filter: blur(4px);      /* desfoca o conteúdo atrás */
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .overlay.ativo { display: flex; }  /* JS adiciona/remove essa classe */
+
+    .modal {
+      background: var(--bg-card);
+      border: 1px solid var(--borda);
+      border-radius: 20px;
+      padding: 2rem;
+      width: 100%;
+      max-width: 580px;
+      max-height: 90vh;
+      overflow-y: auto;                /* scroll interno se formulário for longo */
+      position: relative;
+      transition: background .35s, border-color .35s;
+    }
+    [data-tema="light"] .modal { box-shadow: 0 16px 48px rgba(45,27,94,.18); }
+
+    .modal h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      color: var(--rosa-vibrante);
+      margin-bottom: 1.5rem;
+      transition: color .35s;
+    }
+    [data-tema="light"] .modal h2 { color: var(--roxo-medio); }
+
+    /* Botão X no canto do modal */
+    .btn-fechar {
+      position: absolute; top: 1rem; right: 1.2rem;
+      background: none; border: none;
+      color: var(--texto-suave);
+      font-size: 1.5rem;
+      cursor: pointer; line-height: 1;
+    }
+    .btn-fechar:hover { color: var(--rosa-vibrante); }
+
+    /* ===========================
+       FORMULÁRIO
+       Grid de 2 colunas; campos com classe .full ocupam as 2 colunas.
+    =========================== */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .form-grid .full { grid-column: 1 / -1; } /* span nas 2 colunas */
+
+    /* Labels em maiúsculo, cor roxa, espaçados */
+    label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--roxo-claro);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: .35rem;
+      transition: color .35s;
+    }
+
+    /* Estilo unificado para todos os campos de entrada */
+    input, select, textarea {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1.5px solid var(--borda);
+      border-radius: 10px;
+      color: var(--texto-principal);
+      padding: .7rem 1rem;
+      font-size: .95rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color .2s, background .35s, color .35s, box-shadow .2s;
+    }
+    /* Borda rosa + halo suave ao focar */
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--rosa-vibrante);
+      box-shadow: 0 0 0 3px rgba(232,96,154,.15);
+    }
+    textarea { resize: vertical; min-height: 80px; }
+    select option { background: var(--bg-card); color: var(--texto-principal); }
+
+    /* ===== SELEÇÃO DE DIFICULDADE =====
+       Radio buttons escondidos; as labels viram botões estilizados.
+       O CSS do :checked + label muda a aparência conforme o tema ativo. */
+    .dificuldade-grupo { display: flex; gap: .6rem; }
+    .dificuldade-grupo input[type="radio"] { display: none; } /* radio invisível */
+    .dificuldade-grupo label {
+      flex: 1; text-align: center;
+      padding: .55rem;
+      border: 1.5px solid var(--borda);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: .82rem;
+      text-transform: none; letter-spacing: 0;
+      color: var(--texto-suave);
+      background: var(--bg-input);
+      transition: all .15s;
+      font-weight: 500;
+    }
+    .dificuldade-grupo input[type="radio"]:checked + label { font-weight: 700; }
+
+    /* Cores de seleção no tema dark */
+    [data-tema="dark"] #dif-facil:checked   + label { background: #1a5c38; border-color: var(--verde-medio); color: #A8E6C3; }
+    [data-tema="dark"] #dif-media:checked   + label { background: #7B5E00; border-color: #C49A00; color: #FFD700; }
+    [data-tema="dark"] #dif-dificil:checked + label { background: #7B1A1A; border-color: var(--rosa-vibrante); color: #FFA0B4; }
+
+    /* Cores de seleção no tema light */
+    [data-tema="light"] #dif-facil:checked   + label { background: #D4F5E5; border-color: #2E9E60; color: #1E6B3E; }
+    [data-tema="light"] #dif-media:checked   + label { background: #FFF4CC; border-color: #C49A00; color: #7A5F00; }
+    [data-tema="light"] #dif-dificil:checked + label { background: #FFE4EF; border-color: #D44F8A; color: #A02060; }
+
+    /* ===== AVALIAÇÃO EM ESTRELAS =====
+       Radio buttons invisíveis + labels com ★.
+       flex-direction: row-reverse com :checked ~ label
+       é o truque CSS puro para iluminar as estrelas anteriores. */
+    .estrelas { display: flex; gap: .3rem; flex-direction: row-reverse; justify-content: flex-end; }
+    .estrelas input { display: none; }
+    .estrelas label {
+      font-size: 1.6rem;
+      color: var(--estrela-off);       /* cinza/roxo escuro quando inativa */
+      cursor: pointer;
+      text-transform: none; letter-spacing: 0;
+      transition: color .1s;
+    }
+    /* A estrela selecionada e todas as anteriores ficam douradas */
+    .estrelas input:checked ~ label,
+    .estrelas label:hover,
+    .estrelas label:hover ~ label { color: #E8A000; }
+
+    /* Botão de salvar com gradiente verde */
+    .btn-salvar {
+      width: 100%;
+      background: linear-gradient(135deg, var(--verde-floresta), var(--verde-medio));
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      padding: .85rem;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 1.2rem;
+      font-family: 'Inter', sans-serif;
+      transition: opacity .2s, transform .15s;
+    }
+    .btn-salvar:hover { opacity: .88; transform: translateY(-1px); }
+
+    /* ===========================
+       GRADE DE CARDS
+       auto-fill com minmax(300px, 1fr): cria quantas colunas
+       couberem sem quebrar abaixo de 300px por card.
+    =========================== */
+    .secao-titulo {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.3rem;
+      color: var(--roxo-claro);
+      margin-bottom: 1.2rem;
+      display: flex; align-items: center; gap: .6rem;
+      transition: color .35s;
+    }
+    .grade-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.2rem;
+    }
+
+    /* ===== CARD INDIVIDUAL =====
+       A borda colorida no topo (::before) muda conforme a classe
+       .facil / .media / .dificil adicionada pelo JS ao renderizar. */
+    .card-trilha {
+      background: var(--bg-card);
+      border: 1px solid var(--borda);
+      border-radius: 16px;
+      padding: 1.4rem;
+      position: relative;
+      transition: transform .2s, box-shadow .2s, background .35s, border-color .35s;
+    }
+    [data-tema="light"] .card-trilha { box-shadow: 0 2px 10px rgba(90,62,142,.07); }
+    .card-trilha:hover { transform: translateY(-3px); box-shadow: var(--card-shadow); }
+
+    /* Faixa colorida de 4px no topo do card, via pseudo-elemento */
+    .card-trilha::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 4px; border-radius: 16px 16px 0 0;
+    }
+    .card-trilha.facil::before   { background: linear-gradient(90deg, var(--verde-floresta), var(--verde-medio)); }
+    .card-trilha.media::before   { background: linear-gradient(90deg, #C49A00, #F0C830); }
+    .card-trilha.dificil::before { background: linear-gradient(90deg, var(--rosa-vibrante), #F090B8); }
+
+    .card-nome {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.15rem;
+      color: var(--texto-principal);
+      margin-bottom: .3rem;
+      transition: color .35s;
+    }
+    .card-local { color: var(--texto-suave); font-size: .85rem; margin-bottom: .9rem; }
+    .card-meta  { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .9rem; }
+
+    /* Tags em pílula (border-radius: 50px) */
+    .tag { font-size: .75rem; padding: .25rem .7rem; border-radius: 50px; font-weight: 600; }
+
+    /* Tags de dificuldade adaptadas por tema */
+    [data-tema="dark"] .tag-dif-facil   { background: rgba(76,175,125,.18); color: #4CAF7D; border: 1px solid rgba(76,175,125,.35); }
+    [data-tema="dark"] .tag-dif-media   { background: rgba(196,154,0,.15);  color: #E5C233; border: 1px solid rgba(196,154,0,.30); }
+    [data-tema="dark"] .tag-dif-dificil { background: rgba(232,96,154,.15); color: #E8609A; border: 1px solid rgba(232,96,154,.30); }
+    [data-tema="light"] .tag-dif-facil   { background: #D4F5E5; color: #1E6B3E; border: 1px solid #A8E6C3; }
+    [data-tema="light"] .tag-dif-media   { background: #FFF4CC; color: #7A5F00; border: 1px solid #E8D080; }
+    [data-tema="light"] .tag-dif-dificil { background: #FFE4EF; color: #A02060; border: 1px solid #F5B8D4; }
+
+    /* Tags de km e data usam variáveis para trocar com o tema */
+    .tag-km   { background: var(--tag-km-bg);   color: var(--tag-km-cor);   border: 1px solid var(--borda); transition: background .35s; }
+    .tag-data { background: var(--tag-data-bg); color: var(--tag-data-cor); border: 1px solid var(--borda); transition: background .35s; }
+
+    /* Nota em estrelas douradas no card */
+    .card-nota { color: #E8A000; font-size: 1rem; letter-spacing: .05em; margin-bottom: .8rem; }
+
+    /* Observações com citação em itálico e borda rosa à esquerda */
+    .card-obs {
+      font-size: .82rem;
+      color: var(--texto-suave);
+      line-height: 1.5;
+      margin-bottom: .9rem;
+      font-style: italic;
+      padding-left: .7rem;
+      border-left: 3px solid var(--rosa-claro);
+    }
+    .card-acoes { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+
+    /* Botão de abrir link do Maps */
+    .btn-maps {
+      text-decoration: none;
+      background: linear-gradient(135deg, var(--verde-floresta), var(--verde-medio));
+      color: #fff;
+      padding: .45rem .9rem;
+      border-radius: 50px;
+      font-size: .8rem;
+      font-weight: 600;
+      transition: opacity .2s;
+    }
+    .btn-maps:hover { opacity: .85; }
+
+    /* Botões de ação do card (editar e excluir) com cor por tema */
+    .btn-editar, .btn-excluir {
+      border: none; cursor: pointer;
+      border-radius: 50px; padding: .45rem .9rem;
+      font-size: .8rem; font-weight: 600;
+      transition: opacity .2s, background .35s;
+      font-family: 'Inter', sans-serif;
+    }
+    [data-tema="dark"] .btn-editar  { background: rgba(155,126,200,.2); color: #9B7EC8; border: 1px solid rgba(155,126,200,.3); }
+    [data-tema="dark"] .btn-excluir { background: rgba(232,96,154,.15); color: #E8609A; border: 1px solid rgba(232,96,154,.3); }
+    [data-tema="light"] .btn-editar  { background: #EDE8F8; color: #5A3E8E; border: 1.5px solid rgba(90,62,142,.2); }
+    [data-tema="light"] .btn-excluir { background: #FFE4EF; color: #A02060; border: 1.5px solid #F5B8D4; }
+    .btn-editar:hover, .btn-excluir:hover { opacity: .72; }
+
+    /* ===========================
+       ESTADO VAZIO
+       Aparece quando não há trilhas cadastradas.
+    =========================== */
+    .estado-vazio { text-align: center; padding: 4rem 2rem; color: var(--texto-suave); }
+    .estado-vazio .emoji { font-size: 3.5rem; display: block; margin-bottom: 1rem; }
+
+    /* ===========================
+       TOAST (notificação flutuante)
+       Aparece no canto inferior direito por 3 segundos.
+       Entra com translateY(0) e some voltando para baixo.
+    =========================== */
+    .toast {
+      position: fixed;
+      bottom: 2rem; right: 2rem;
+      background: var(--verde-floresta);
+      color: #fff;
+      padding: .9rem 1.4rem;
+      border-radius: 12px;
+      font-weight: 600; font-size: .9rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,.25);
+      transform: translateY(80px); opacity: 0; /* começa escondido abaixo */
+      transition: transform .3s, opacity .3s;
+      z-index: 999;
+    }
+    .toast.visivel { transform: translateY(0); opacity: 1; } /* JS adiciona essa classe */
+    .toast.erro { background: var(--toast-erro-bg); }        /* vermelho para erros */
+
+    /* ===========================
+       RESPONSIVO
+       Em telas menores que 520px, o formulário vira coluna única.
+    =========================== */
+    @media (max-width: 520px) {
+      .form-grid { grid-template-columns: 1fr; }
+      .form-grid .full { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- =====================================================
+     HEADER
+     position: relative permite o btn-tema usar absolute.
+===================================================== -->
+<header>
+  <!-- Botão de alternância de tema — fica no canto superior direito -->
+  <button class="btn-tema" id="btnTema" onclick="alternarTema()" title="Alternar tema">
+    <span class="icone" id="icone">☀️</span>
+    <span id="labelTema">Modo Claro</span>
+  </button>
+  <span class="header-emoji">🌿</span>
+  <h1>Registro de Trilhas</h1>
+  <p>Suas aventuras na natureza, organizadas com carinho</p>
+</header>
+
+<!-- =====================================================
+     BARRA DE ESTATÍSTICAS
+     Valores preenchidos pelo JS via GET /api/estatisticas
+===================================================== -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-valor" id="statTotal">—</div>
+    <div class="stat-label">Trilhas registradas</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-valor" id="statMedia">—</div>
+    <div class="stat-label">Nota média</div>
+  </div>
+</div>
+
+<!-- =====================================================
+     CONTEÚDO PRINCIPAL
+===================================================== -->
+<main>
+  <!-- Abre o modal de cadastro -->
+  <button class="btn-nova-trilha" onclick="abrirModal()">＋ Nova Trilha</button>
+
+  <div class="secao-titulo">🏕️ Suas trilhas</div>
+
+  <!-- Grade de cards — preenchida dinamicamente pelo JS -->
+  <div class="grade-cards" id="gradeCards">
+    <!-- Estado inicial: nenhuma trilha cadastrada -->
+    <div class="estado-vazio">
+      <span class="emoji">🌄</span>
+      <p>Nenhuma trilha ainda.<br>Cadastre sua primeira aventura!</p>
+    </div>
+  </div>
+</main>
+
+<!-- =====================================================
+     MODAL DE CADASTRO / EDIÇÃO
+     Clicar fora do .modal (no .overlay) também fecha.
+     O JS detecta isso via fecharModalFora().
+===================================================== -->
+<div class="overlay" id="overlay" onclick="fecharModalFora(event)">
+  <div class="modal">
+    <!-- Botão de fechar no canto do modal -->
+    <button class="btn-fechar" onclick="fecharModal()">✕</button>
+
+    <!-- Título muda para "Editar" quando for edição -->
+    <h2 id="modalTitulo">🌱 Nova Trilha</h2>
+
+    <form id="formTrilha" onsubmit="salvarTrilha(event)">
+      <!-- ID oculto: vazio = novo cadastro | preenchido = edição -->
+      <input type="hidden" id="trilhaId" />
+
+      <div class="form-grid">
+
+        <!-- Nome da trilha (obrigatório) -->
+        <div class="full">
+          <label for="nome">Nome da trilha</label>
+          <input type="text" id="nome" placeholder="Ex: Trilha da Pedra Bonita" required />
+        </div>
+
+        <!-- Local (obrigatório) -->
+        <div class="full">
+          <label for="local">Local / Cidade</label>
+          <input type="text" id="local" placeholder="Ex: Serra dos Órgãos, RJ" required />
+        </div>
+
+        <!-- Distância em km (opcional) -->
+        <div>
+          <label for="distancia">Distância (km)</label>
+          <input type="number" id="distancia" step="0.1" min="0" placeholder="Ex: 12.5" />
+        </div>
+
+        <!-- Data em que a trilha foi feita (opcional) -->
+        <div>
+          <label for="data">Data da trilha</label>
+          <input type="date" id="data" />
+        </div>
+
+        <!-- Dificuldade: radio buttons estilizados como botões -->
+        <div class="full">
+          <label>Dificuldade</label>
+          <div class="dificuldade-grupo">
+            <input type="radio" name="dificuldade" id="dif-facil"   value="Fácil" />
+            <label for="dif-facil">🟢 Fácil</label>
+            <input type="radio" name="dificuldade" id="dif-media"   value="Média" />
+            <label for="dif-media">🟡 Média</label>
+            <input type="radio" name="dificuldade" id="dif-dificil" value="Difícil" />
+            <label for="dif-dificil">🔴 Difícil</label>
+          </div>
+        </div>
+
+        <!-- Nota de 1 a 5 estrelas (radio buttons com CSS puro) -->
+        <div class="full">
+          <label>Sua nota</label>
+          <div class="estrelas">
+            <!-- Ordem reversa no HTML + flex-direction: row-reverse = efeito correto -->
+            <input type="radio" name="nota" id="star5" value="5" /><label for="star5">★</label>
+            <input type="radio" name="nota" id="star4" value="4" /><label for="star4">★</label>
+            <input type="radio" name="nota" id="star3" value="3" /><label for="star3">★</label>
+            <input type="radio" name="nota" id="star2" value="2" /><label for="star2">★</label>
+            <input type="radio" name="nota" id="star1" value="1" /><label for="star1">★</label>
+          </div>
+        </div>
+
+        <!-- Texto livre de observações (opcional) -->
+        <div class="full">
+          <label for="obs">Observações</label>
+          <textarea id="obs" placeholder="Como foi a trilha? Vale a pena repetir? Dicas..."></textarea>
+        </div>
+
+        <!-- Link do Google Maps para abrir no botão do card (opcional) -->
+        <div class="full">
+          <label for="maps">Link do Google Maps</label>
+          <input type="url" id="maps" placeholder="https://maps.google.com/..." />
+        </div>
+
+      </div>
+
+      <!-- Dispara o onsubmit do form → salvarTrilha() no JS -->
+      <button type="submit" class="btn-salvar">💾 Salvar Trilha</button>
+    </form>
+  </div>
+</div>
+
+<!-- Notificação de sucesso/erro — aparece temporariamente no canto da tela -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // URL base do backend Node/Express rodando localmente
+  const API = 'http://localhost:3000/api';
+
+  // Array em memória com as trilhas buscadas do banco
+  let trilhas = [];
+
+  /* ====================================================
+     TOGGLE DARK / LIGHT
+     Estratégia: o atributo data-tema no <html> é o interruptor.
+     O CSS seleciona estilos diferentes com [data-tema="dark"]
+     e [data-tema="light"]. O JS só troca o atributo.
+  ==================================================== */
+  function alternarTema() {
+    const html   = document.documentElement;
+    const atual  = html.getAttribute('data-tema');
+    const novo   = atual === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-tema', novo);           // troca o tema
+    localStorage.setItem('tema-trilhas', novo);     // persiste no navegador
+    atualizarBotaoTema(novo);
+  }
+
+  // Atualiza ícone e texto do botão conforme o tema atual
+  function atualizarBotaoTema(tema) {
+    document.getElementById('icone').textContent     = tema === 'dark' ? '☀️' : '🌙';
+    document.getElementById('labelTema').textContent = tema === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+  }
+
+  // IIFE: executa imediatamente ao carregar o script
+  // Restaura o tema salvo no localStorage (ou dark por padrão)
+  (function () {
+    const salvo = localStorage.getItem('tema-trilhas') || 'dark';
+    document.documentElement.setAttribute('data-tema', salvo);
+    atualizarBotaoTema(salvo);
+  })();
+
+  /* ====================================================
+     INICIALIZAÇÃO
+     Aguarda o DOM estar pronto antes de fazer fetch.
+  ==================================================== */
+  document.addEventListener('DOMContentLoaded', () => {
+    carregarTrilhas();
+    carregarEstatisticas();
+  });
+
+  /* ====================================================
+     FUNÇÕES DE API (fetch ao backend)
+  ==================================================== */
+
+  // GET /api/trilhas — busca todas as trilhas e renderiza os cards
+  async function carregarTrilhas() {
+    try {
+      const res = await fetch(`${API}/trilhas`);
+      trilhas = await res.json();
+      renderCards(trilhas);
+    } catch {
+      mostrarToast('Não foi possível conectar ao servidor 😔', true);
+    }
+  }
+
+  // GET /api/estatisticas — preenche total e média na stats bar
+  async function carregarEstatisticas() {
+    try {
+      const res = await fetch(`${API}/estatisticas`);
+      const { total, mediaNota } = await res.json();
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statMedia').textContent = mediaNota + ' ⭐';
+    } catch { /* falha silenciosa: stats não são críticas */ }
+  }
+
+  // POST (novo) ou PUT (edição) — enviado ao submeter o formulário
+  async function salvarTrilha(e) {
+    e.preventDefault(); // impede reload da página
+
+    const id  = document.getElementById('trilhaId').value; // vazio = novo
+    const not = document.querySelector('input[name="nota"]:checked');
+    const dif = document.querySelector('input[name="dificuldade"]:checked');
+
+    // Monta o objeto a ser enviado como JSON
+    const payload = {
+      nome:         document.getElementById('nome').value,
+      local:        document.getElementById('local').value,
+      distancia_km: parseFloat(document.getElementById('distancia').value) || null,
+      dificuldade:  dif  ? dif.value  : null,
+      data_trilha:  document.getElementById('data').value || null,
+      nota:         not  ? parseInt(not.value) : null,
+      observacoes:  document.getElementById('obs').value || null,
+      link_maps:    document.getElementById('maps').value || null,
+    };
+
+    try {
+      // Se há ID → PUT (edição); se não → POST (criação)
+      const res = await fetch(id ? `${API}/trilhas/${id}` : `${API}/trilhas`, {
+        method:  id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error();
+      mostrarToast(id ? '✏️ Trilha atualizada!' : '🌿 Trilha cadastrada!');
+      fecharModal();
+      carregarTrilhas();        // atualiza a lista
+      carregarEstatisticas();   // atualiza os números
+    } catch {
+      mostrarToast('Erro ao salvar a trilha 😕', true);
+    }
+  }
+
+  // DELETE /api/trilhas/:id — confirma antes de excluir
+  async function excluirTrilha(id) {
+    if (!confirm('Excluir esta trilha?')) return;
+    try {
+      await fetch(`${API}/trilhas/${id}`, { method: 'DELETE' });
+      mostrarToast('🗑️ Trilha removida.');
+      carregarTrilhas();
+      carregarEstatisticas();
+    } catch {
+      mostrarToast('Erro ao excluir 😕', true);
+    }
+  }
+
+  /* ====================================================
+     RENDERIZAÇÃO DOS CARDS
+     Gera o HTML de cada card dinamicamente a partir do array
+     de trilhas. Usa template literals para montar o markup.
+  ==================================================== */
+  function renderCards(lista) {
+    const grade = document.getElementById('gradeCards');
+
+    // Sem trilhas: exibe estado vazio
+    if (!lista.length) {
+      grade.innerHTML = `
+        <div class="estado-vazio">
+          <span class="emoji">🌄</span>
+          <p>Nenhuma trilha ainda.<br>Cadastre sua primeira aventura!</p>
+        </div>`;
+      return;
+    }
+
+    grade.innerHTML = lista.map(t => {
+      // Classe CSS da faixa colorida no topo do card
+      const cls   = t.dificuldade === 'Fácil' ? 'facil'
+                  : t.dificuldade === 'Difícil' ? 'dificil' : 'media';
+
+      // Tags opcionais (só renderizam se o campo existir)
+      const tDif  = t.dificuldade
+        ? `<span class="tag tag-dif-${cls}">${t.dificuldade}</span>` : '';
+      const tKm   = t.distancia_km
+        ? `<span class="tag tag-km">📏 ${t.distancia_km} km</span>` : '';
+      const tData = t.data_trilha
+        ? `<span class="tag tag-data">📅 ${fmt(t.data_trilha)}</span>` : '';
+
+      // Estrelas: repete ★ pela nota e ☆ pelo restante até 5
+      const ests  = t.nota ? '★'.repeat(t.nota) + '☆'.repeat(5 - t.nota) : '';
+
+      // Bloco de observações com aspas de citação
+      const obs   = t.observacoes
+        ? `<div class="card-obs">"${t.observacoes}"</div>` : '';
+
+      // Botão do Maps (abre em nova aba)
+      const maps  = t.link_maps
+        ? `<a href="${t.link_maps}" target="_blank" class="btn-maps">🗺️ Ver no Maps</a>` : '';
+
+      return `
+        <div class="card-trilha ${cls}">
+          <div class="card-nome">${t.nome}</div>
+          <div class="card-local">📍 ${t.local}</div>
+          <div class="card-meta">${tDif}${tKm}${tData}</div>
+          ${ests ? `<div class="card-nota">${ests}</div>` : ''}
+          ${obs}
+          <div class="card-acoes">
+            ${maps}
+            <button class="btn-editar"  onclick="abrirEdicao(${t.id})">✏️ Editar</button>
+            <button class="btn-excluir" onclick="excluirTrilha(${t.id})">🗑️ Excluir</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  /* ====================================================
+     CONTROLE DO MODAL
+  ==================================================== */
+
+  // Abre o modal zerado para novo cadastro
+  function abrirModal() {
+    document.getElementById('formTrilha').reset();
+    document.getElementById('trilhaId').value = ''; // sem ID = novo
+    document.getElementById('modalTitulo').textContent = '🌱 Nova Trilha';
+    document.getElementById('overlay').classList.add('ativo');
+  }
+
+  // Abre o modal preenchido com os dados de uma trilha existente (edição)
+  function abrirEdicao(id) {
+    const t = trilhas.find(x => x.id === id); // busca no array em memória
+    if (!t) return;
+
+    // Preenche os campos com os valores atuais
+    document.getElementById('trilhaId').value  = t.id;
+    document.getElementById('nome').value      = t.nome || '';
+    document.getElementById('local').value     = t.local || '';
+    document.getElementById('distancia').value = t.distancia_km || '';
+    document.getElementById('data').value      = t.data_trilha ? t.data_trilha.slice(0,10) : '';
+    document.getElementById('obs').value       = t.observacoes || '';
+    document.getElementById('maps').value      = t.link_maps || '';
+    document.getElementById('modalTitulo').textContent = '✏️ Editar Trilha';
+
+    // Marca o radio de dificuldade correto
+    const mapDif = { 'Fácil':'dif-facil','Média':'dif-media','Difícil':'dif-dificil' };
+    if (t.dificuldade && mapDif[t.dificuldade]) {
+      const el = document.getElementById(mapDif[t.dificuldade]);
+      if (el) el.checked = true;
+    }
+
+    // Marca a estrela de nota correspondente
+    if (t.nota) {
+      const s = document.getElementById(`star${t.nota}`);
+      if (s) s.checked = true;
+    }
+
+    document.getElementById('overlay').classList.add('ativo');
+  }
+
+  // Remove a classe .ativo do overlay → modal some
+  function fecharModal() {
+    document.getElementById('overlay').classList.remove('ativo');
+  }
+
+  // Fecha o modal apenas se o clique foi no overlay (fundo), não dentro do .modal
+  function fecharModalFora(e) {
+    if (e.target === document.getElementById('overlay')) fecharModal();
+  }
+
+  /* ====================================================
+     UTILITÁRIOS
+  ==================================================== */
+
+  // Converte "YYYY-MM-DD" (formato do MySQL) para "DD/MM/AAAA"
+  function fmt(str) {
+    if (!str) return '';
+    const [a, m, d] = str.slice(0,10).split('-');
+    return `${d}/${m}/${a}`;
+  }
+
+  // Exibe o toast de notificação por ~3 segundos
+  // erro=true usa fundo vermelho em vez de verde
+  function mostrarToast(msg, erro = false) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className   = 'toast' + (erro ? ' erro' : '');
+    setTimeout(() => t.classList.add('visivel'), 10);    // pequeno delay para a transição funcionar
+    setTimeout(() => t.classList.remove('visivel'), 3200);
+  }
+</script>
+</body>
+</html>
