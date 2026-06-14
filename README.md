@@ -74,17 +74,6 @@ mysql2: Conectar a aplicação ao banco MySQL
 dotenv: Gerenciar variáveis de ambiente (arquivo .env)
 cors: Permitir comunicação entre frontend e backend
 nodemon: Reiniciar o servidor automaticamente quando salvar o código
----
-
-## 📁 Estrutura do Projeto
-registro-trilhas/
-├── backend/
-│   ├── server.js
-│   ├── package.json
-│   ├── package-lock.json
-│   └── .env
-└── index.html
-
 
 ---
 
